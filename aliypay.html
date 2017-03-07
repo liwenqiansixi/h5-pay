@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, user-scalable=no">
+    <meta content="yes" name="apple-mobile-web-app-capable">
+    <meta content="black" name="apple-mobile-web-app-status-bar-style">
+    <meta content="telephone=no" name="format-detection">
+    <title>支付宝付款</title>
+    <link rel="stylesheet" type="text/css" href="css/text.css">
+    <script type="text/javascript" src="js/jquery-2.2.3.min.js"></script>
+    <script type="application/javascript" src="js/fastclick.js"></script>
+    <script src="js/jquery.base64.js"></script>
+    <script type="application/javascript">
+        $(function () {
+            FastClick.attach(document.body);
+
+        });
+    </script>
+    <script>
+        var userId;
+        $.getUrlParam = function (name) {
+            var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
+            var r = window.location.search.substr(1).match(reg);
+            if (r != null) return decodeURI(r[2]);
+            return null;
+        };
+        userId = $.getUrlParam("userId");
+        alert("userId=" + userId);
+        if (!userId) {
+            var tmpUrl = $.base64.encode(window.location.href);
+            window.location.href = "http://beta.wxpay.1toall.net/CMBC_pmtChannel/index?backurl=" + tmpUrl;
+        }
+        console.log(userId);
+    </script>
+</head>
+<body>
+
+<div class="warp">
+
+    <div class="business_title"></div>
+    <div class="input_border">
+        <div class="input_money">
+            <div class="input_label">金额</div>
+            <div class="cursor"></div>
+            <div class="input_price"></div>
+            <div class="input_img">¥</div>
+        </div>
+
+        <!--<div class="input_explain">-->
+        <!--<div class="input_des">付款任意金额,享随机立减</div>-->
+        <!--</div>-->
+    </div>
+
+    <div class="keyboard">
+        <div class="number1" onclick="number(1)"><span>1</span></div>
+        <div class="number2" onclick="number(2)"><span>2</span></div>
+        <div class="number3" onclick="number(3)"><span>3</span></div>
+        <div class="delete" onclick="cancel()"><span>删除</span></div>
+        <div class="number4" onclick="number(4)"><span>4</span></div>
+        <div class="number5" onclick="number(5)"><span>5</span></div>
+        <div class="number6" onclick="number(6)"><span>6</span></div>
+        <div class="to_pay">
+            <div class="pay_text">
+                确认<br/>付款
+            </div>
+        </div>
+        <div class="number7" onclick="number(7)"><span>7</span></div>
+        <div class="number8" onclick="number(8)"><span>8</span></div>
+        <div class="number9" onclick="number(9)"><span>9</span></div>
+        <div class="number0" onclick="number(0)"><span>0</span></div>
+        <div class="point" onclick="point()">.</div>
+        <div class="line1"></div>
+        <div class="line2"></div>
+        <div class="line3"></div>
+        <div class="line4"></div>
+        <div class="line5"></div>
+        <div class="line6"></div>
+
+    </div>
+
+    <form name="punchout_form" method="post" action="">
+        <input type="hidden" name="biz_content" value="">
+        <input type="submit" value="立即支付" style="display:none">
+    </form>
+
+
+    <div class="loading" style=" position: fixed;
+    background-color: rgba(0,0,0,0.4);
+    left: 0;
+    top: 0;
+    min-width: 100%;
+    min-height: 100%;
+    z-index: 1000; display: none">
+        <div style="color: white; margin-top: 70%;text-align: center">正在处理...</div>
+    </div>
+    <div id="result"></div>
+</div>
+
+
+</body>
+
+<script src="js/resetSize.js"></script>
+
+<script>
+
+    (function ($) {
+        $(".to_pay").on("click", topay);
+    })(jQuery);
+
+    $(".to_pay").addClass("canpay");
+    var maxMoney = 100000.00;
+    var request = "http://beta.ecpay.1toall.net";              //"http://ecpay.1toall.net";
+    var store_id = $.getUrlParam('store_id');
+    var store_name = $.getUrlParam('store_name');
+    //    console.log(openId);
+    $(".business_title").html(store_name);
+
+
+    var price = "";
+    function number(x) {
+
+        if (price == "0") {
+
+            price = "";
+            price = price + x;
+
+            $(".input_price").html(price);
+        } else {
+
+            if (price.indexOf(".") > 0) {
+                var range = price.indexOf(".") + 1;
+                if (price.length - range > 1) {
+                    return;
+                } else {
+                    price = price + x;
+                    $(".to_pay").addClass("canpay");
+
+                    $(".input_price").html(price);
+                }
+            } else {
+
+                if (price >= maxMoney) {
+                    alert("超出最大金额");
+                    return;
+                }
+                price = price + x;
+                $(".to_pay").addClass("canpay");
+                $(".input_price").html(price);
+            }
+        }
+    }
+
+    function point() {
+
+        if (price.indexOf(".") > 0) {
+            return;
+        } else {
+
+            if (price.length == 0) {
+                price = "0.";
+                $(".input_price").html(price);
+            } else {
+                price = price + ".";
+                $(".input_price").html(price);
+            }
+
+        }
+
+    }
+
+    function cancel() {
+
+        if (price.length == 0) {
+            return;
+        }
+        price = price.substring(0, price.length - 1);
+        $(".input_price").html(price);
+
+    }
+
+
+    // 付款按钮
+    function topay() {
+        $(".loading").show();
+        $(".to_pay").unbind("click");
+
+        if (price > 0.00) {
+            // 微信
+            var content ={
+                price: price,
+                userId:userId
+            };
+            if(channerId==1){
+                //1走民生
+                var url = "http://beta.wxpay.1toall.net/Batch_Process/wxPay";
+                $.ajax({
+                    url: url,
+                    type: 'post',
+                    dataType: "json",
+                    data: content,
+                    success: function (data) {
+                        alert("data=" + data);
+                        tradeNO = data.tradeNo;
+                        alert("tradeNOTest=" + tradeNO);
+                        tradePayTest(tradeNO);
+                        log(tradeNO);
+                    },
+                    error: function (error) {
+                        console.log(error)
+                    }
+                })
+            }else if(channerId==2){
+  //2走讯联
+                $.post(request+"/api/xlPay/webPay_zfb", biz_content, function (data) {
+                    var code = data.code;
+                    if (code == 0) {
+                        var url = data.data;
+                        window.location.href = url;
+                    }else {
+                        $(".loading").hide();
+                        $(".to_pay").on("click", topay);
+                        alert(data.msg);
+                    }
+                }).error(function (error) {
+                    $(".loading").hide();
+                    $(".to_pay").on("click", topay);
+                    alert(JSON.stringify(error));
+                });
+            }
+
+        } else {
+            $(".to_pay").on("click", topay);
+            $(".loading").hide();
+            alert("请输入正确价格");
+            return;
+        }
+    }
+
+
+</script>
+<script type="application/javascript">
+
+
+    //接口调用订单号
+    var tradeNO;
+
+
+    // 打印信息
+    function log(obj) {
+        $("#result").append(obj).append(" ").append("<br />");
+    }
+
+    $(document).ready(function () {
+        // 页面载入完成后即唤起收银台
+        // 此处${tradeNO}为模板语言语法，实际调用样例类似为tradePpay("2016072621001004200000000752")
+//        tradePay(tradeNO);
+
+        // 点击payButton按钮后唤起收银台
+        $(".to_pay").click(function () {
+
+        });
+
+    });
+
+    // 通过jsapi关闭当前窗口，仅供参考，更多jsapi请访问
+    // https://doc.open.alipay.com/docs/doc.htm?treeId=193&articleId=104510&docType=1
+    $("#closeButton").click(function () {
+        AlipayJSBridge.call('closeWebview');
+    });
+
+
+
+    // 由于js的载入是异步的，所以可以通过该方法，当AlipayJSBridgeReady事件发生后，再执行callback回掉方法
+    function ready(callback) {
+        if (window.AlipayJSBridge) {
+            callback && callback();
+        } else {
+            document.addEventListener('AlipayJSBridgeReady', callback, false);
+        }
+    }
+
+    function tradePayTest(tradeNO) {
+        alert("just=" + tradeNO);
+        AlipayJSBridge.call("tradePay",
+            {tradeNO: tradeNO},
+            function (result) {
+                alert(result);
+                alert(result.resultCode);
+            });
+    }
+
+
+    function tradePay(tradeNO) {
+        log("test~~first");
+        ready(function () {
+            // 通过传入交易号唤起快捷调用方式(注意tradeNO大小写严格)
+            log("test~~");
+            AlipayJSBridge.call("tradePay", {
+                tradeNO: tradeNO
+            }, function (data) {
+                log("test123~~");
+                log(data);
+                alert(data);
+                alert(data.resultCode);
+                if ("9000" == data.resultCode) {
+                    log("支付成功");
+                    window.location.href = 'http://baidu.com'
+                } else if ("4000" == data.resultCode) {
+                    log("订单支付失败");
+                    window.location.href = 'http://www.oscca.gov.cn/News/201012/News_1197.htm'
+                } else if ('8000' == data.resultCode) {
+                    log("正在处理中");
+                    window.location.href = 'http://www.oscca.gov.cn/News/201012/News_1197.htm'
+                } else {
+                    log("未处理");
+                    window.location.href = 'https://angular.cn/docs/ts/latest/guide/template-syntax.html'
+
+                }
+            });
+        });
+    }
+
+
+</script>
+</html>
